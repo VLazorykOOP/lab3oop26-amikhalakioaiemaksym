@@ -2,11 +2,293 @@
 #define CODING_VS_CODE
 #endif
 #include <iostream>
+#include <iomanip>
 #include <math.h>
+#include <string>
+#include <cmath> 
+#include <complex>
 #if !defined(CODING_VS_CODE)
 	#include <clocale>
 #endif
 using namespace std;
+
+
+// ==========================================
+// ЗАДАЧА 1
+// ==========================================
+class Date {
+private:
+	int day;
+	int month;
+	int year;
+
+	bool isLeapYear(int y) const {
+		return (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0);
+	}
+
+	int getDaysInMonth(int m, int y) const {
+		if (m < 1 || m > 12) return 0;
+		int days[] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+		if (m == 2 && isLeapYear(y)) return 29;
+		return days[m];
+	}
+
+	bool isValidDate(int d, int m, int y) const {
+		if (m < 1 || m > 12) return false;
+		if (d < 1 || d > getDaysInMonth(m, y)) return false;
+		return true;
+	}
+
+public:
+	Date() : day(1), month(1), year(2000) {}
+
+	Date(int d, int m, int y) {
+		if (isValidDate(d, m, y)) {
+			day = d; month = m; year = y;
+		}
+		else {
+			cout << "Помилка: Некоректна дата. Встановлено 01.01.2000.\n";
+			day = 1; month = 1; year = 2000;
+		}
+	}
+
+	bool setYear(int y) {
+		if (isValidDate(day, month, y)) { year = y; return true; }
+		return false;
+	}
+	bool setMonth(int m) {
+		if (isValidDate(day, m, year)) { month = m; return true; }
+		return false;
+	}
+	bool setDay(int d) {
+		if (isValidDate(d, month, year)) { day = d; return true; }
+		return false;
+	}
+
+	int getDay() const { return day; }
+	int getMonth() const { return month; }
+	int getYear() const { return year; }
+
+	void printTextFormat() const {
+		string monthNames[] = { "", "січня", "лютого", "березня", "квітня", "травня", "червня",
+								"липня", "серпня", "вересня", "жовтня", "листопада", "грудня" };
+		cout << day << " " << monthNames[month] << " " << year << " року" << endl;
+	}
+
+	void printNumericFormat() const {
+		cout << setfill('0') << setw(2) << day << "."
+			<< setfill('0') << setw(2) << month << "."
+			<< setfill('0') << setw(4) << year << endl;
+	}
+};
+
+int mainDate() {
+	cout << "--- Тест класу Date ---" << endl;
+	Date date1(5, 1, 2019);
+	date1.printTextFormat();
+	date1.printNumericFormat();
+	return 1;
+}
+
+// ==========================================
+// ЗАДАЧА 2.1
+// ==========================================
+enum VectorState {
+	STATE_OK = 0,
+	STATE_NO_MEMORY = 1,
+	STATE_OUT_OF_BOUNDS = 2
+};
+
+class IntVector {
+private:
+	int* data;
+	int size;
+	int state;
+	static int objCount; // Статичне поле для підрахунку об'єктів
+
+	// Допоміжний метод для виділення пам'яті (уникаємо дублювання коду)
+	void allocateMemory(int s, int initVal) {
+		if (s <= 0) s = 1; // Захист від від'ємних чи нульових розмірів
+		size = s;
+		// Використовуємо nothrow, щоб повернути nullptr замість викидання винятку
+		data = new (nothrow) int[size];
+
+		if (!data) {
+			state = STATE_NO_MEMORY;
+			size = 0;
+		}
+		else {
+			state = STATE_OK;
+			for (int i = 0; i < size; ++i) {
+				data[i] = initVal;
+			}
+		}
+	}
+
+public:
+	// 1. Конструктор без параметрів (1 елемент, ініціалізація нулем)
+	IntVector() {
+		allocateMemory(1, 0);
+		objCount++;
+	}
+
+	// 2. Конструктор з одним параметром - розмір (ініціалізація нулями)
+	IntVector(int s) {
+		allocateMemory(s, 0);
+		objCount++;
+	}
+
+	// 3. Конструктор із двома параметрами - розмір та значення ініціалізації
+	IntVector(int s, int val) {
+		allocateMemory(s, val);
+		objCount++;
+	}
+
+	// 4. Конструктор копіювання
+	IntVector(const IntVector& other) {
+		size = other.size;
+		state = other.state;
+		data = new (nothrow) int[size];
+
+		if (!data) {
+			state = STATE_NO_MEMORY;
+			size = 0;
+		}
+		else {
+			for (int i = 0; i < size; ++i) {
+				data[i] = other.data[i];
+			}
+		}
+		objCount++;
+	}
+
+	// 5. Деструктор (звільняє пам'ять)
+	~IntVector() {
+		if (data) {
+			delete[] data;
+		}
+		objCount--;
+	}
+
+	// 6. Оператор присвоєння
+	IntVector& operator=(const IntVector& other) {
+		if (this == &other) return *this; // Захист від самоприсвоєння
+
+		if (data) delete[] data; // Звільняємо стару пам'ять
+
+		size = other.size;
+		state = other.state;
+		data = new (nothrow) int[size];
+
+		if (!data) {
+			state = STATE_NO_MEMORY;
+			size = 0;
+		}
+		else {
+			for (int i = 0; i < size; ++i) {
+				data[i] = other.data[i];
+			}
+		}
+		return *this;
+	}
+
+	// 7. Функція встановлення елемента з параметром за замовчуванням
+	void setElement(int index, int val = 0) {
+		if (index < 0 || index >= size) {
+			state = STATE_OUT_OF_BOUNDS;
+			return;
+		}
+		data[index] = val;
+		state = STATE_OK;
+	}
+
+	// 8. Функція отримання елемента масиву
+	int getElement(int index) {
+		if (index < 0 || index >= size) {
+			state = STATE_OUT_OF_BOUNDS;
+			return 0; // Повертаємо 0 як заглушку при помилці
+		}
+		state = STATE_OK;
+		return data[index];
+	}
+
+	// 9. Функція друку
+	void print() const {
+		if (size == 0 || state == STATE_NO_MEMORY) {
+			cout << "[Помилка пам'яті або вектор порожній]" << endl;
+			return;
+		}
+		cout << "[ ";
+		for (int i = 0; i < size; ++i) {
+			cout << data[i] << " ";
+		}
+		cout << "] (State: " << state << ")" << endl;
+	}
+
+	// 10. Додавання (Add) - покомпонентне додавання
+	IntVector Add(const IntVector& other) {
+		int maxSize = (size > other.size) ? size : other.size;
+		IntVector result(maxSize);
+		if (result.state == STATE_NO_MEMORY) return result;
+
+		for (int i = 0; i < maxSize; ++i) {
+			int val1 = (i < size) ? data[i] : 0;
+			int val2 = (i < other.size) ? other.data[i] : 0;
+			result.data[i] = val1 + val2;
+		}
+		return result;
+	}
+
+	// 11. Віднімання (Sub) - покомпонентне віднімання
+	IntVector Sub(const IntVector& other) {
+		int maxSize = (size > other.size) ? size : other.size;
+		IntVector result(maxSize);
+		if (result.state == STATE_NO_MEMORY) return result;
+
+		for (int i = 0; i < maxSize; ++i) {
+			int val1 = (i < size) ? data[i] : 0;
+			int val2 = (i < other.size) ? other.data[i] : 0;
+			result.data[i] = val1 - val2;
+		}
+		return result;
+	}
+
+	// 12. Множення на ціле типу short (Mul)
+	IntVector Mul(short multiplier) {
+		IntVector result(size);
+		if (result.state == STATE_NO_MEMORY) return result;
+
+		for (int i = 0; i < size; ++i) {
+			result.data[i] = data[i] * multiplier;
+		}
+		return result;
+	}
+
+	// 13. Функції порівняння (більше)
+	// Порівнюємо спочатку за довжиною. Якщо довжина рівна — лексикографічно (поелементно)
+	bool isGreater(const IntVector& other) const {
+		if (size > other.size) return true;
+		if (size < other.size) return false;
+
+		for (int i = 0; i < size; ++i) {
+			if (data[i] > other.data[i]) return true;
+			if (data[i] < other.data[i]) return false;
+		}
+		return false;
+	}
+
+	// Функція порівняння (менше або рівно)
+	bool isLessOrEqual(const IntVector& other) const {
+		return !isGreater(other);
+	}
+
+	// Допоміжні геттери
+	int getState() const { return state; }
+	static int getObjCount() { return objCount; }
+};
+
+// Ініціалізація статичного поля класу
+int IntVector::objCount = 0;
 
 class Icosahedron {
 	double a; // side of the icosahedron
